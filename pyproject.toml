@@ -1,0 +1,17 @@
+[project]
+name = "clinic-appointment-booking-engine"
+version = "0.1.0"
+description = "Automating doctor appointment reservations via Telephony, LLLMs, TTS and STT"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic-settings",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "double"

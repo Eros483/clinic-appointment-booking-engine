@@ -1,0 +1,44 @@
+# ----- Runtime dependencies for Docker build (pip install) @ requirements.txt -----
+# NOTE: dev workflow uses `uv add` / `uv sync`. This file is for Docker only.
+
+# Server
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic-settings>=2.6.0
+python-dotenv>=1.0.0
+python-multipart>=0.0.12
+
+# Database
+asyncpg>=0.30.0
+
+# Redis session
+redis>=5.2.0
+
+# Audio processing
+numpy>=1.26.0
+scipy>=1.14.0
+
+# VAD — Silero ONNX
+onnxruntime>=1.19.0
+
+# Language ID — SpeechBrain
+speechbrain>=1.0.0
+torch>=2.4.0
+
+# STT — Moonshine Tiny ONNX (loaded via onnxruntime)
+
+# LLM — Groq API (OpenAI-compatible)
+groq>=0.12.0
+openai>=1.50.0
+
+# Observability — LangSmith
+langsmith>=0.1.100
+
+# Telephony — Twilio
+twilio>=9.3.0
+
+# HTTP
+httpx>=0.28.0
+websockets>=13.0
+
+# TTS — Sarvam API (HTTP calls via httpx)
