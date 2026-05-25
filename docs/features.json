@@ -1,451 +1,90 @@
 {
   "version": "0.1.0",
   "updated": "2026-05-25",
-  "features": [
+  "layers": [
     {
-      "id": "scaffold-backend",
-      "title": "Backend directory structure + utils",
-      "status": "done",
-      "priority": "P0",
-      "layer": "infra",
-      "files": [
-        "backend/__init__.py",
-        "backend/main.py",
-        "backend/utils/__init__.py",
-        "backend/utils/config.py",
-        "backend/utils/logger.py",
-        "backend/.env.example",
-        "pyproject.toml"
-      ]
+      "id": "layer-1-telephony",
+      "title": "Layer 1 — Telephony",
+      "description": "Twilio Media Streams WebSocket, μ-law decode/resample, barge-in",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "scaffold-frontend",
-      "title": "Frontend directory structure",
-      "status": "done",
-      "priority": "P2",
-      "layer": "infra",
-      "files": [
-        "frontend/"
-      ]
+      "id": "layer-2-vad",
+      "title": "Layer 2 — Voice Activity Detection",
+      "description": "Silero VAD (ONNX) per-frame, 700ms end-of-utterance, pre-roll buffer",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "scaffold-docs",
-      "title": "Docs + feature tracker",
-      "status": "done",
-      "priority": "P0",
-      "layer": "infra",
-      "files": [
-        "docs/design.md",
-        "docs/features.json",
-        "AGENTS.md",
-        "requirements.txt"
-      ]
+      "id": "layer-3-language-id",
+      "title": "Layer 3 — Language Identification",
+      "description": "SpeechBrain VoxLingua107 ECAPA-TDNN, switching logic, IndicVoices pre-deployment validation",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "api-v1-router",
-      "title": "API v1 prefix router",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "api",
-      "files": [
-        "backend/api/v1/router.py"
-      ],
-      "depends_on": ["scaffold-backend"]
+      "id": "layer-4-stt",
+      "title": "Layer 4 — Speech-to-Text",
+      "description": "Moonshine Tiny ONNX Q8 ×5 models (hi/en/te/bn/mr), warm-loaded, router by active_language",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "api-calls",
-      "title": "GET /calls endpoints",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "api",
-      "files": [
-        "backend/api/v1/calls.py"
-      ],
-      "depends_on": ["model-calls"]
+      "id": "layer-5-llm",
+      "title": "Layer 5 — LLM Orchestration",
+      "description": "Groq API (Llama 3.1 8B), prompt builder, appointment extraction + validation, LangSmith tracing, rate-limit retry",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "api-appointments",
-      "title": "GET /appointments endpoint",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "api",
-      "files": [
-        "backend/api/v1/appointments.py"
-      ],
-      "depends_on": ["model-appointments"]
+      "id": "layer-6-tts",
+      "title": "Layer 6 — Text-to-Speech",
+      "description": "Sarvam Bulbul v3, language-to-voice mapping, common phrase caching, 24kHz→8kHz resample",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "api-slots",
-      "title": "GET /slots/{doctor_name} endpoint",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "api",
-      "files": [
-        "backend/api/v1/slots.py"
-      ],
-      "depends_on": ["model-doctor-slots"]
+      "id": "call-state-machine",
+      "title": "Call State Machine",
+      "description": "GREETING → COLLECT_DETAILS → CHECK_SLOT → CONFIRM_SLOT → COMMITTING → DONE, Redis session CRUD (TTL 3600s)",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "api-metrics",
-      "title": "GET /metrics/latency, /metrics/languages",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "api",
-      "files": [
-        "backend/api/v1/metrics.py"
-      ],
-      "depends_on": ["model-turn-metrics", "model-language-events"]
+      "id": "data-layer-postgres",
+      "title": "Data Layer — Postgres",
+      "description": "asyncpg pool, migrations (calls, appointments, doctor_slots, turn_metrics, language_events), optimistic slot locking, seed schedule",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "api-twilio",
-      "title": "Twilio webhook + Media Stream WebSocket",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "api",
-      "files": [
-        "backend/api/v1/twilio.py"
-      ],
-      "depends_on": ["core-audio", "core-vad", "core-state-machine"]
+      "id": "observability-langsmith",
+      "title": "Observability — LangSmith",
+      "description": "Trace all LLM calls with call_sid + language tags, per-call trace context",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "core-audio",
-      "title": "Audio utilities — μ-law decode, resample_poly",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "core",
-      "files": [
-        "backend/core/audio.py"
-      ],
-      "depends_on": ["scaffold-backend"]
+      "id": "metrics-evaluation",
+      "title": "Metrics & Evaluation",
+      "description": "TTFT, turn latency, language accuracy — 20 scripted test calls across 5 languages",
+      "status": "pending",
+      "priority": "P0"
     },
     {
-      "id": "core-vad",
-      "title": "Silero VAD (ONNX) per-frame + barge-in",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "core",
-      "files": [
-        "backend/core/vad.py"
-      ],
-      "depends_on": ["core-audio"]
+      "id": "admin-dashboard",
+      "title": "Admin Dashboard",
+      "description": "React + Vite frontend (Vercel), FastAPI REST endpoints, CORS",
+      "status": "pending",
+      "priority": "P1"
     },
     {
-      "id": "core-language-id",
-      "title": "SpeechBrain VoxLingua107 language classifier",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "core",
-      "files": [
-        "backend/core/language_id.py"
-      ],
-      "depends_on": ["core-audio"]
-    },
-    {
-      "id": "core-stt",
-      "title": "Moonshine Tiny ONNX Q8 STT router (5 langs)",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "core",
-      "files": [
-        "backend/core/stt.py"
-      ],
-      "depends_on": ["core-audio", "core-language-id"]
-    },
-    {
-      "id": "core-llm",
-      "title": "Groq LLM orchestration + prompt builder",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "core",
-      "files": [
-        "backend/core/llm.py"
-      ],
-      "depends_on": ["service-groq"]
-    },
-    {
-      "id": "core-tts",
-      "title": "Sarvam Bulbul v3 TTS wrapper",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "core",
-      "files": [
-        "backend/core/tts.py"
-      ],
-      "depends_on": ["core-audio"]
-    },
-    {
-      "id": "core-state-machine",
-      "title": "Call state machine (GREETING→CHECK_SLOT→COMMITTING→DONE)",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "core",
-      "files": [
-        "backend/core/state_machine.py"
-      ],
-      "depends_on": ["scaffold-backend"]
-    },
-    {
-      "id": "model-calls",
-      "title": "calls table queries (asyncpg)",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "models",
-      "files": [
-        "backend/models/calls.py"
-      ],
-      "depends_on": ["db-pool"]
-    },
-    {
-      "id": "model-appointments",
-      "title": "appointments table queries",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "models",
-      "files": [
-        "backend/models/appointments.py"
-      ],
-      "depends_on": ["db-pool"]
-    },
-    {
-      "id": "model-doctor-slots",
-      "title": "doctor_slots table + optimistic lock",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "models",
-      "files": [
-        "backend/models/doctor_slots.py"
-      ],
-      "depends_on": ["db-pool"]
-    },
-    {
-      "id": "model-turn-metrics",
-      "title": "turn_metrics table writes",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "models",
-      "files": [
-        "backend/models/turn_metrics.py"
-      ],
-      "depends_on": ["db-pool"]
-    },
-    {
-      "id": "model-language-events",
-      "title": "language_events table writes",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "models",
-      "files": [
-        "backend/models/language_events.py"
-      ],
-      "depends_on": ["db-pool"]
-    },
-    {
-      "id": "schema-session",
-      "title": "Redis session JSON schema / Pydantic model",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "schemas",
-      "files": [
-        "backend/schemas/session.py"
-      ],
-      "depends_on": ["scaffold-backend"]
-    },
-    {
-      "id": "schema-appointment",
-      "title": "Appointment extraction validation",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "schemas",
-      "files": [
-        "backend/schemas/appointment.py"
-      ],
-      "depends_on": ["scaffold-backend"]
-    },
-    {
-      "id": "service-session",
-      "title": "Redis session CRUD (TTL 3600s)",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "services",
-      "files": [
-        "backend/services/session.py"
-      ],
-      "depends_on": ["schema-session"]
-    },
-    {
-      "id": "service-groq",
-      "title": "Groq client wrapper + LangSmith tracing",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "services",
-      "files": [
-        "backend/services/groq.py"
-      ],
-      "depends_on": ["scaffold-backend"]
-    },
-    {
-      "id": "service-calendar",
-      "title": "Google Calendar MCP (post-call async)",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "services",
-      "files": [
-        "backend/services/calendar.py"
-      ],
-      "depends_on": ["scaffold-backend"]
-    },
-    {
-      "id": "db-pool",
-      "title": "asyncpg connection pool singleton",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "db",
-      "files": [
-        "backend/db/pool.py"
-      ],
-      "depends_on": ["scaffold-backend"]
-    },
-    {
-      "id": "db-migration-create-tables",
-      "title": "Migration 001: create calls, appointments, doctor_slots, turn_metrics, language_events",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "db",
-      "files": [
-        "backend/db/migrations/001_create_tables.sql"
-      ],
-      "depends_on": ["db-pool"]
-    },
-    {
-      "id": "db-migration-seed-slots",
-      "title": "Migration 002: pre-seed doctor_slots with weekly schedule",
-      "status": "stub",
-      "priority": "P0",
-      "layer": "db",
-      "files": [
-        "backend/db/migrations/002_seed_slots.sql"
-      ],
-      "depends_on": ["db-migration-create-tables"]
-    },
-    {
-      "id": "test-vad",
-      "title": "VAD unit tests",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "tests",
-      "files": [
-        "backend/tests/test_vad.py"
-      ],
-      "depends_on": ["core-vad"]
-    },
-    {
-      "id": "test-language-id",
-      "title": "Language ID unit tests",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "tests",
-      "files": [
-        "backend/tests/test_language_id.py"
-      ],
-      "depends_on": ["core-language-id"]
-    },
-    {
-      "id": "test-stt",
-      "title": "STT unit tests",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "tests",
-      "files": [
-        "backend/tests/test_stt.py"
-      ],
-      "depends_on": ["core-stt"]
-    },
-    {
-      "id": "test-llm",
-      "title": "LLM orchestration unit tests",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "tests",
-      "files": [
-        "backend/tests/test_llm.py"
-      ],
-      "depends_on": ["core-llm"]
-    },
-    {
-      "id": "test-state-machine",
-      "title": "State machine unit tests",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "tests",
-      "files": [
-        "backend/tests/test_state_machine.py"
-      ],
-      "depends_on": ["core-state-machine"]
-    },
-    {
-      "id": "test-slot-booking",
-      "title": "Slot booking integration tests",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "tests",
-      "files": [
-        "backend/tests/test_slot_booking.py"
-      ],
-      "depends_on": ["model-doctor-slots"]
-    },
-    {
-      "id": "test-conftest",
-      "title": "pytest fixtures (test DB, test Redis, test client)",
-      "status": "stub",
-      "priority": "P1",
-      "layer": "tests",
-      "files": [
-        "backend/tests/conftest.py"
-      ],
-      "depends_on": ["scaffold-backend"]
-    },
-    {
-      "id": "eval-lang-id-indicvoices",
-      "title": "Validate VoxLingua107 on IndicVoices (clean + telephony-degraded)",
-      "status": "todo",
-      "priority": "P0",
-      "layer": "eval",
-      "depends_on": ["core-language-id"]
-    },
-    {
-      "id": "eval-20-calls",
-      "title": "20-scripted-call evaluation (TTFT, turn latency, lang accuracy)",
-      "status": "todo",
-      "priority": "P0",
-      "layer": "eval",
-      "depends_on": ["core-state-machine", "api-twilio"]
-    },
-    {
-      "id": "frontend-dashboard",
-      "title": "React + Vite dashboard (Vercel deploy)",
-      "status": "todo",
-      "priority": "P2",
-      "layer": "frontend",
-      "files": [
-        "frontend/"
-      ]
-    },
-    {
-      "id": "deploy-docker",
-      "title": "Dockerfile + render.yaml for Render deployment",
-      "status": "todo",
-      "priority": "P0",
-      "layer": "deploy"
-    },
-    {
-      "id": "readme-docs",
-      "title": "README with badges, free-tier constraints, eval results",
-      "status": "todo",
-      "priority": "P0",
-      "layer": "docs",
-      "files": [
-        "README.md"
-      ]
+      "id": "deployment",
+      "title": "Deployment",
+      "description": "Dockerfile, render.yaml, README with free-tier constraints + badges",
+      "status": "pending",
+      "priority": "P0"
     }
   ]
 }
