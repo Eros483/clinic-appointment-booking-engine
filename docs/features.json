@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "updated": "2026-05-25",
+  "updated": "2026-05-26",
   "layers": [
     {
       "id": "layer-1-telephony",
@@ -20,8 +20,34 @@
       "id": "layer-3-language-id",
       "title": "Layer 3 — Language Identification",
       "description": "SpeechBrain VoxLingua107 ECAPA-TDNN, switching logic, IndicVoices pre-deployment validation",
-      "status": "pending",
-      "priority": "P0"
+      "status": "done",
+      "priority": "P0",
+      "subfeatures": [
+        {
+          "id": "l3-core-inference",
+          "title": "identify_language() — model load + classify + label mapping",
+          "description": "backend/core/language_id.py: lazy-load EncoderClassifier, map VoxLingua107 labels to 5 language codes (hi/en/te/bn/mr), fallback to 'hi' on unknown",
+          "status": "done"
+        },
+        {
+          "id": "l3-core-switching",
+          "title": "update_active_language() — switching logic",
+          "description": "Pure function: confidence >= 0.80 AND word_count > 5 switches, first-utterance low-confidence defaults to 'hi', otherwise keeps current",
+          "status": "done"
+        },
+        {
+          "id": "l3-eval-script",
+          "title": "scripts/eval_lang_id.py — pre-deployment validation",
+          "description": "Standalone script: streams capped, shuffled per-language validation samples from IndicVoices plus Svarah English, evaluates clean vs telephony-degraded accuracy, reports latency p50/p95, and fails clearly when required language coverage is missing",
+          "status": "done"
+        },
+        {
+          "id": "l3-tests",
+          "title": "language_id + eval loader tests",
+          "description": "pytest with unittest.mock.patch: label mapping, confidence, fallback, switching thresholds, plus eval-script loader coverage for IndicVoices/Svarah streaming, shuffle, balanced caps, and resampling",
+          "status": "done"
+        }
+      ]
     },
     {
       "id": "layer-4-stt",

@@ -17,6 +17,7 @@ redis>=5.2.0
 # Audio processing
 numpy>=1.26.0
 scipy>=1.14.0
+torchcodec>=0.13.0
 
 # VAD — Silero ONNX
 onnxruntime>=1.19.0
@@ -24,6 +25,10 @@ onnxruntime>=1.19.0
 # Language ID — SpeechBrain
 speechbrain>=1.0.0
 torch>=2.4.0
+torchaudio>=2.4.0
+
+# Eval — IndicVoices dataset
+datasets>=3.0.0
 
 # STT — Moonshine Tiny ONNX (loaded via onnxruntime)
 
