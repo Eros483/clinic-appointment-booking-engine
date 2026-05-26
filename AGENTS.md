@@ -115,7 +115,7 @@ clinic-appointment-booking-engine/
   - Exception: the Dockerfile in design.md uses `pip install` for build-time deps — that's fine in CI.
 - Every backend file starts with: `# ----- <4-5 word purpose> @ <file location> -----`
 - Naming: snake_case for files, variables, functions, DB columns
-- All main functions that handle individual components must have precise docstrings written for them.
+- All main functions that handle individual components must have precise docstrings written for them. The remaining functions can have a one-liner.
 - Formatter: black
 - API routes are thin: validate input → call core → return output
 - `core/` has zero knowledge of HTTP or FastAPI
