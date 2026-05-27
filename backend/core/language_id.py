@@ -3,13 +3,18 @@
 import numpy as np
 import torch
 
-# Maps VoxLingua107 language names → 5 supported ISO codes.
+# Maps VoxLingua107 language names/codes → 5 supported ISO codes.
 VOXLINGUA_TO_CODE: dict[str, str] = {
     "Hindi": "hi",
     "English": "en",
-    "Tamil": "te",
+    "Telugu": "te",
     "Bengali": "bn",
     "Marathi": "mr",
+    "hi": "hi",
+    "en": "en",
+    "te": "te",
+    "bn": "bn",
+    "mr": "mr",
 }
 
 _classifier = None
@@ -55,13 +60,23 @@ def identify_language(audio: np.ndarray, sr: int = 16000) -> tuple[str, float]:
     # score is a log-probability; exponentiate for a 0–1 confidence value.
     confidence = float(score[0].exp().item())
 
-    # text_lab may be "Hindi" (name) or "hi: Hindi" (code: name) depending
-    # on the SpeechBrain version.  Handle both.
+    # text_lab may be "Hindi" (name) or "bn: Bengali" (code: name)
+    # depending on the SpeechBrain version. Handle both.
     raw_label = str(text_lab[0])
     if ": " in raw_label:
-        raw_label = raw_label.split(": ")[0]
+        label_code, label_name = raw_label.split(": ", maxsplit=1)
+        lang_code = VOXLINGUA_TO_CODE.get(label_code) or VOXLINGUA_TO_CODE.get(
+            label_name
+        )
+    else:
+        lang_code = VOXLINGUA_TO_CODE.get(raw_label)
 
-    lang_code = VOXLINGUA_TO_CODE.get(raw_label, "hi")
+    if lang_code is None and raw_label == "Tamil":
+        # Keep a defensive alias for the design-doc/code mismatch around `te`.
+        lang_code = "te"
+
+    if lang_code is None:
+        lang_code = "hi"
     return lang_code, confidence
 
 

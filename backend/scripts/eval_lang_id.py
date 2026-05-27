@@ -2,27 +2,18 @@
 
 import argparse
 import time
-from collections.abc import Iterable
 
 import numpy as np
 import scipy.signal
 
-from backend.core.language_id import VOXLINGUA_TO_CODE, identify_language
+from backend.core.language_id import identify_language
+from backend.utils.eval_dataset_cache import (
+    TARGET_SR,
+    dataset_to_samples,
+    load_or_build_eval_dataset,
+)
 
-# Map our supported language codes to IndicVoices config names.
-INDICVOICES_CONFIGS = {
-    "hi": "hindi",
-    "te": "telugu",
-    "bn": "bengali",
-    "mr": "marathi",
-}
-
-ENGLISH_DATASET_NAME = "ai4bharat/Svarah"
-INDICVOICES_DATASET_NAME = "ai4bharat/IndicVoices"
 SAMPLES_PER_LANG = 25
-SHUFFLE_BUFFER_SIZE = 256
-TARGET_SR = 16000
-RANDOM_SEED = 42
 
 
 def _mu_law_compress(x: np.ndarray) -> np.ndarray:
@@ -43,7 +34,6 @@ def telephony_degrade(audio: np.ndarray, sr: int) -> np.ndarray:
     """
     if sr != 8000:
         audio = scipy.signal.resample_poly(audio, 8000, sr)
-        sr = 8000
 
     sos = scipy.signal.butter(4, [300, 3400], btype="band", fs=8000, output="sos")
     audio = scipy.signal.sosfilt(sos, audio)
@@ -64,91 +54,16 @@ def telephony_degrade(audio: np.ndarray, sr: int) -> np.ndarray:
     return audio
 
 
-def _iter_dataset_rows(dataset: Iterable) -> Iterable[dict]:
-    """Yield rows from a dataset or dataset-like iterable."""
-    for item in dataset:
-        yield item
-
-
-def _load_indicvoices_split(config_name: str):
-    """Load one IndicVoices validation split lazily in streaming mode."""
-    from datasets import load_dataset
-
-    return load_dataset(
-        INDICVOICES_DATASET_NAME,
-        name=config_name,
-        split="valid",
-        streaming=True,
-    )
-
-
-def _load_svarah_split():
-    """Load the Svarah English evaluation split lazily in streaming mode."""
-    from datasets import load_dataset
-
-    return load_dataset(
-        ENGLISH_DATASET_NAME,
-        split="test",
-        streaming=True,
-    )
-
-
-def _shuffle_dataset(dataset: Iterable):
-    """Shuffle a streaming dataset with a bounded in-memory buffer."""
-    shuffle = getattr(dataset, "shuffle", None)
-    if callable(shuffle):
-        return shuffle(buffer_size=SHUFFLE_BUFFER_SIZE, seed=RANDOM_SEED)
-    return dataset
-
-
-def _extract_audio_array(item: dict) -> np.ndarray | None:
-    """Extract and resample a single audio row."""
-    audio = item.get("audio") or item.get("audio_filepath")
-    if not audio:
-        return None
-
-    audio_array = audio["array"]
-    audio_sr = audio["sampling_rate"]
-    if audio_sr != TARGET_SR:
-        audio_array = scipy.signal.resample_poly(audio_array, TARGET_SR, audio_sr)
-
-    return audio_array
-
-
-def _collect_language_samples(dataset: Iterable, sample_cap: int) -> list[np.ndarray]:
-    """Collect up to *sample_cap* audio rows from a dataset-like iterable."""
-    samples: list[np.ndarray] = []
-    for item in _iter_dataset_rows(_shuffle_dataset(dataset)):
-        if len(samples) >= sample_cap:
-            break
-
-        audio_array = _extract_audio_array(item)
-        if audio_array is None:
-            continue
-
-        samples.append(audio_array)
-
-    return samples
-
-
-def load_samples(sample_cap: int = SAMPLES_PER_LANG) -> dict[str, list[np.ndarray]]:
-    """Stream balanced evaluation samples for each supported language."""
-    samples: dict[str, list[np.ndarray]] = {
-        code: [] for code in VOXLINGUA_TO_CODE.values()
-    }
-
-    for lang_code, config_name in INDICVOICES_CONFIGS.items():
-        samples[lang_code] = _collect_language_samples(
-            _load_indicvoices_split(config_name),
-            sample_cap=sample_cap,
-        )
-
-    samples["en"] = _collect_language_samples(
-        _load_svarah_split(),
+def load_samples(
+    sample_cap: int = SAMPLES_PER_LANG,
+    refresh_cache: bool = False,
+) -> dict[str, list[np.ndarray]]:
+    """Load eval samples from a small local cached Hugging Face dataset."""
+    dataset = load_or_build_eval_dataset(
         sample_cap=sample_cap,
+        refresh=refresh_cache,
     )
-
-    return samples
+    return dataset_to_samples(dataset)
 
 
 def evaluate(
@@ -214,8 +129,11 @@ def print_table(results: dict, p50: float, p95: float):
 
 def main():
     args = parse_args()
-    print("Loading streamed evaluation datasets...")
-    samples = load_samples(sample_cap=args.samples_per_lang)
+    print("Loading cached evaluation dataset...")
+    samples = load_samples(
+        sample_cap=args.samples_per_lang,
+        refresh_cache=args.refresh_cache,
+    )
     total = sum(len(v) for v in samples.values())
     missing_langs = [
         lang_code
@@ -259,9 +177,9 @@ def main():
         print(f"FAIL: p95 latency {p95:.1f}ms exceeds 100ms threshold")
 
     if any_fail:
-        exit(1)
-    else:
-        print("\nPASS: All acceptance criteria met")
+        raise SystemExit(1)
+
+    print("\nPASS: All acceptance criteria met")
 
 
 def parse_args() -> argparse.Namespace:
@@ -271,7 +189,12 @@ def parse_args() -> argparse.Namespace:
         "--samples-per-lang",
         type=int,
         default=SAMPLES_PER_LANG,
-        help="Maximum number of utterances to stream per language.",
+        help="Maximum number of utterances to cache per language.",
+    )
+    parser.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Rebuild the cached evaluation dataset from the streaming sources.",
     )
     return parser.parse_args()
 

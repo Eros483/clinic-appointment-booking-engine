@@ -12,6 +12,8 @@ env/
 dist/
 build/
 *.egg
+tmp/
+backend/.cache/
 
 # Logs
 logs/

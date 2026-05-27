@@ -26,7 +26,7 @@
         {
           "id": "l3-core-inference",
           "title": "identify_language() — model load + classify + label mapping",
-          "description": "backend/core/language_id.py: lazy-load EncoderClassifier, map VoxLingua107 labels to 5 language codes (hi/en/te/bn/mr), fallback to 'hi' on unknown",
+          "description": "backend/core/language_id.py: lazy-load EncoderClassifier, handle SpeechBrain label formats like 'bn: Bengali' or plain names, map VoxLingua107 outputs to 5 language codes (hi/en/te/bn/mr), fallback to 'hi' on unknown",
           "status": "done"
         },
         {
@@ -38,13 +38,13 @@
         {
           "id": "l3-eval-script",
           "title": "scripts/eval_lang_id.py — pre-deployment validation",
-          "description": "Standalone script: streams capped, shuffled per-language validation samples from IndicVoices plus Svarah English, evaluates clean vs telephony-degraded accuracy, reports latency p50/p95, and fails clearly when required language coverage is missing",
+          "description": "Standalone script: evaluates against a small local cached Hugging Face dataset built from streamed, shuffled, take-capped samples from IndicVoices plus Svarah English, then reports clean vs telephony-degraded accuracy and latency p50/p95",
           "status": "done"
         },
         {
           "id": "l3-tests",
           "title": "language_id + eval loader tests",
-          "description": "pytest with unittest.mock.patch: label mapping, confidence, fallback, switching thresholds, plus eval-script loader coverage for IndicVoices/Svarah streaming, shuffle, balanced caps, and resampling",
+          "description": "pytest with unittest.mock.patch: label mapping across code:name and plain-name formats, confidence, fallback, switching thresholds, plus cache-building coverage for streamed shuffle/take sampling, local save/load, balanced caps, and eval-script cache usage",
           "status": "done"
         }
       ]

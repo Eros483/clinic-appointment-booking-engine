@@ -23,13 +23,19 @@ def _reset_classifier():
 
 class TestVoxLinguaToCode:
     def test_voxlingua_to_code_maps_all_five_languages(self):
-        assert VOXLINGUA_TO_CODE == {
+        for label, code in {
             "Hindi": "hi",
             "English": "en",
-            "Tamil": "te",
+            "Telugu": "te",
             "Bengali": "bn",
             "Marathi": "mr",
-        }
+            "hi": "hi",
+            "en": "en",
+            "te": "te",
+            "bn": "bn",
+            "mr": "mr",
+        }.items():
+            assert VOXLINGUA_TO_CODE[label] == code
 
 
 class TestIdentifyLanguage:
@@ -70,16 +76,27 @@ class TestIdentifyLanguage:
         assert conf == pytest.approx(0.95, rel=1e-5)
 
     def test_identify_language_handles_code_colon_name_format(self):
-        """SpeechBrain sometimes returns 'hi: Hindi' instead of plain 'Hindi'."""
-        mock_clf = self._make_mock_classifier("hi: Hindi", 0.88)
+        """SpeechBrain sometimes returns 'bn: Bengali' instead of plain labels."""
+        mock_clf = self._make_mock_classifier("bn: Bengali", 0.88)
         with patch(
             "backend.core.language_id._load_classifier",
             return_value=mock_clf,
         ):
             lang, conf = identify_language(np.zeros(16000, dtype=np.float32))
 
-        assert lang == "hi"
+        assert lang == "bn"
         assert conf == pytest.approx(0.88, rel=1e-5)
+
+    def test_identify_language_handles_telugu_name_mapping(self):
+        mock_clf = self._make_mock_classifier("Telugu", 0.91)
+        with patch(
+            "backend.core.language_id._load_classifier",
+            return_value=mock_clf,
+        ):
+            lang, conf = identify_language(np.zeros(16000, dtype=np.float32))
+
+        assert lang == "te"
+        assert conf == pytest.approx(0.91, rel=1e-5)
 
 
 class TestUpdateActiveLanguage:
