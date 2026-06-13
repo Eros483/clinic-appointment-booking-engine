@@ -75,9 +75,7 @@ def identify_language(audio: np.ndarray, sr: int = 16000) -> tuple[str, float]:
         # Keep a defensive alias for the design-doc/code mismatch around `te`.
         lang_code = "te"
 
-    if lang_code is None:
-        lang_code = "hi"
-    return lang_code, confidence
+    return lang_code, confidence, raw_label
 
 
 def update_active_language(

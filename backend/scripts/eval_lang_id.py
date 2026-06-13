@@ -89,14 +89,18 @@ def evaluate(
 
         for audio in utterances:
             t0 = time.perf_counter()
-            pred_clean, _ = identify_language(audio, sr=TARGET_SR)
+
+            pred_clean, _, raw_clean = identify_language(audio, sr=TARGET_SR)
             latencies.append((time.perf_counter() - t0) * 1000)
+
+            if lang_code == "en" and pred_clean != "en":
+                print(f"[DEBUG] English audio misclassified. Raw label: {raw_clean}")
 
             if pred_clean == lang_code:
                 correct_clean += 1
 
             degraded = telephony_degrade(audio.copy(), TARGET_SR)
-            pred_degraded, _ = identify_language(degraded, sr=TARGET_SR)
+            pred_degraded, _, _ = identify_language(degraded, sr=TARGET_SR)
             if pred_degraded == lang_code:
                 correct_degraded += 1
 
