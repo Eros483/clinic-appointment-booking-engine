@@ -54,15 +54,19 @@ def test_build_eval_dataset_cache_streams_shuffle_take_and_save(tmp_path):
             fake_dataset.rows = serialized_rows
             return fake_dataset
 
-    with patch(
-        "backend.utils.eval_dataset_cache._load_dataset_module",
-        return_value=(FakeDatasetFactory, None, None),
-    ), patch(
-        "backend.utils.eval_dataset_cache._load_indicvoices_split",
-        return_value=fake_stream,
-    ), patch(
-        "backend.utils.eval_dataset_cache._load_svarah_split",
-        return_value=fake_stream,
+    with (
+        patch(
+            "backend.utils.eval_dataset_cache._load_dataset_module",
+            return_value=(FakeDatasetFactory, None, None),
+        ),
+        patch(
+            "backend.utils.eval_dataset_cache._load_indicvoices_split",
+            return_value=fake_stream,
+        ),
+        patch(
+            "backend.utils.eval_dataset_cache._load_svarah_split",
+            return_value=fake_stream,
+        ),
     ):
         dataset = eval_dataset_cache.build_eval_dataset_cache(
             sample_cap=2,

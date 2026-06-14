@@ -9,7 +9,7 @@ from backend.utils.logger import logger
 
 INDICVOICES_CONFIGS = {
     "hi": "hindi",
-    "te": "telugu",
+    "ta": "tamil",
     "bn": "bengali",
     "mr": "marathi",
 }
@@ -139,12 +139,10 @@ def load_or_build_eval_dataset(
 
 def dataset_to_samples(dataset) -> dict[str, list[np.ndarray]]:
     """Convert a saved Hugging Face dataset into eval-ready numpy arrays."""
-    samples = {"hi": [], "en": [], "te": [], "bn": [], "mr": []}
+    samples = {"hi": [], "en": [], "ta": [], "bn": [], "mr": []}
     for item in dataset:
         language_code = item["language_code"]
         if language_code not in samples:
             continue
-        samples[language_code].append(
-            np.asarray(item["audio_array"], dtype=np.float32)
-        )
+        samples[language_code].append(np.asarray(item["audio_array"], dtype=np.float32))
     return samples

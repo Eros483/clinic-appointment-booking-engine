@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "updated": "2026-05-26",
+  "updated": "2026-06-14",
   "layers": [
     {
       "id": "layer-1-telephony",
@@ -19,14 +19,14 @@
     {
       "id": "layer-3-language-id",
       "title": "Layer 3 — Language Identification",
-      "description": "SpeechBrain VoxLingua107 ECAPA-TDNN, switching logic, IndicVoices pre-deployment validation",
+      "description": "Custom ECAPA-TDNN (C=512) trained on IndicVoices + Svarah, ONNX inference, switching logic",
       "status": "done",
       "priority": "P0",
       "subfeatures": [
         {
           "id": "l3-core-inference",
-          "title": "identify_language() — model load + classify + label mapping",
-          "description": "backend/core/language_id.py: lazy-load EncoderClassifier, handle SpeechBrain label formats like 'bn: Bengali' or plain names, map VoxLingua107 outputs to 5 language codes (hi/en/te/bn/mr), fallback to 'hi' on unknown",
+          "title": "identify_language() — ONNX inference with log-mel extraction",
+          "description": "backend/core/language_id.py: lazy-load onnxruntime session, compute 80-dim log-mel spectrogram, run small ECAPA-TDNN model, softmax to 5 language codes (hi/en/ta/bn/mr), fallback to 'hi' on unavailable model",
           "status": "done"
         },
         {
@@ -36,15 +36,21 @@
           "status": "done"
         },
         {
-          "id": "l3-eval-script",
-          "title": "scripts/eval_lang_id.py — pre-deployment validation",
-          "description": "Standalone script: evaluates against a small local cached Hugging Face dataset built from streamed, shuffled, take-capped samples from IndicVoices plus Svarah English, then reports clean vs telephony-degraded accuracy and latency p50/p95",
+          "id": "l3-training-pipeline",
+          "title": "training/ — build_dataset, augment, train_ecapa, export_onnx, eval_lang_id",
+          "description": "backend/training/: streaming dataset builder from IndicVoices (hi/ta/bn/mr) + Svarah (en), telephony augmentation, PyTorch ECAPA-TDNN training loop, ONNX export with numerical validation, eval script for clean+degraded accuracy and latency p50/p95",
           "status": "done"
         },
         {
           "id": "l3-tests",
-          "title": "language_id + eval loader tests",
-          "description": "pytest with unittest.mock.patch: label mapping across code:name and plain-name formats, confidence, fallback, switching thresholds, plus cache-building coverage for streamed shuffle/take sampling, local save/load, balanced caps, and eval-script cache usage",
+          "title": "language_id tests — mock ONNX session",
+          "description": "pytest with unittest.mock.patch: softmax label selection, confidence, resample handling, fallback on missing model, switching thresholds",
+          "status": "done"
+        },
+        {
+          "id": "l3-rename-te-to-ta",
+          "title": "Global rename te → ta (Tamil ISO code fix)",
+          "description": "design.md, features.json, all backend files, tests: corrected erroneous 'te' → 'ta' for Tamil across the entire codebase",
           "status": "done"
         }
       ]
@@ -52,7 +58,7 @@
     {
       "id": "layer-4-stt",
       "title": "Layer 4 — Speech-to-Text",
-      "description": "Moonshine Tiny ONNX Q8 ×5 models (hi/en/te/bn/mr), warm-loaded, router by active_language",
+      "description": "Moonshine Tiny ONNX Q8 ×5 models (hi/en/ta/bn/mr), warm-loaded, router by active_language",
       "status": "pending",
       "priority": "P0"
     },

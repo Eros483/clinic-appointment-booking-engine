@@ -7,7 +7,7 @@
 Module-level model loader + two pure functions.
 
 **`VOXLINGUA_TO_CODE` dict** — maps VoxLingua107 labels to 5 language codes:
-- `Hindi` → `hi`, `English` → `en`, `Tamil` → `te`, `Bengali` → `bn`, `Marathi` → `mr`
+- `Hindi` → `hi`, `English` → `en`, `Tamil` → `ta`, `Bengali` → `bn`, `Marathi` → `mr`
 
 **_classifier** — module-level sentinel (`None`), lazy-loaded on first call via `EncoderClassifier.from_hparams(source="speechbrain/lang-id-voxlingua107-ecapa")`.
 

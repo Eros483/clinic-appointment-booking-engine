@@ -1,108 +1,93 @@
-# ----- 8 unit tests for language ID @ backend/tests/test_language_id.py -----
+# ----- 8 unit tests for custom lang ID @ backend/tests/test_language_id.py -----
 
-import math
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-import torch
 
 import backend.core.language_id as lang_id_mod
 from backend.core.language_id import (
-    VOXLINGUA_TO_CODE,
+    LANG_CODES,
     identify_language,
     update_active_language,
 )
 
 
 @pytest.fixture(autouse=True)
-def _reset_classifier():
-    lang_id_mod._classifier = None
+def _reset_session():
+    lang_id_mod._session = None
     yield
 
 
-class TestVoxLinguaToCode:
-    def test_voxlingua_to_code_maps_all_five_languages(self):
-        for label, code in {
-            "Hindi": "hi",
-            "English": "en",
-            "Telugu": "te",
-            "Bengali": "bn",
-            "Marathi": "mr",
-            "hi": "hi",
-            "en": "en",
-            "te": "te",
-            "bn": "bn",
-            "mr": "mr",
-        }.items():
-            assert VOXLINGUA_TO_CODE[label] == code
+class TestLangCodes:
+    def test_lang_codes_contains_all_five_languages(self):
+        assert set(LANG_CODES) == {"hi", "en", "ta", "bn", "mr"}
 
 
 class TestIdentifyLanguage:
-    def _make_mock_classifier(self, label: str, confidence: float) -> MagicMock:
-        """Build a mock classifier whose classify_batch returns the given
-        label and (log-prob → exponentiates back to *confidence*)."""
-        mock_clf = MagicMock()
-        # score[0] must be a real tensor so .exp().item() works naturally.
-        score_tensor = torch.tensor([math.log(confidence)])
-        mock_clf.classify_batch.return_value = (
-            MagicMock(),  # out_prob
-            score_tensor,  # score  (log-probability)
-            MagicMock(),  # index
-            [label],  # text_lab
-        )
-        return mock_clf
+    def _make_mock_session(self, logits: list[float]) -> MagicMock:
+        mock_session = MagicMock()
+        mock_session.run.return_value = [np.array([logits], dtype=np.float32)]
+        return mock_session
 
-    def test_identify_language_fallback_on_unrecognised_label(self):
-        mock_clf = self._make_mock_classifier("xyz UnknownLang", 0.9)
-        with patch(
-            "backend.core.language_id._load_classifier",
-            return_value=mock_clf,
-        ):
-            lang, conf = identify_language(np.zeros(16000, dtype=np.float32))
+    def test_identify_language_fallback_on_no_model(self):
+        lang, conf, raw = identify_language(np.zeros(16000, dtype=np.float32))
+        assert lang == "hi"
+        assert conf == 0.0
+
+    def test_identify_language_returns_correct_label(self):
+        logits = [2.0, 0.5, 0.3, 0.2, 0.1]
+        mock_session = self._make_mock_session(logits)
+        with patch.object(lang_id_mod, "_load_model", return_value=None):
+            lang_id_mod._session = mock_session
+            lang, conf, raw = identify_language(np.zeros(16000, dtype=np.float32))
 
         assert lang == "hi"
-        assert conf == pytest.approx(0.9, rel=1e-5)
+        assert conf == pytest.approx(0.581, rel=1e-2)
 
-    def test_identify_language_returns_confidence_from_model(self):
-        mock_clf = self._make_mock_classifier("Hindi", 0.95)
-        with patch(
-            "backend.core.language_id._load_classifier",
-            return_value=mock_clf,
-        ):
-            lang, conf = identify_language(np.zeros(16000, dtype=np.float32))
+    def test_identify_language_returns_english_when_top(self):
+        logits = [0.1, 3.0, 0.2, 0.3, 0.1]
+        mock_session = self._make_mock_session(logits)
+        with patch.object(lang_id_mod, "_load_model", return_value=None):
+            lang_id_mod._session = mock_session
+            lang, conf, raw = identify_language(np.zeros(16000, dtype=np.float32))
+
+        assert lang == "en"
+        assert conf == pytest.approx(0.808, rel=1e-2)
+
+    def test_identify_language_returns_tamil_when_top(self):
+        logits = [0.1, 0.2, 3.0, 0.3, 0.1]
+        mock_session = self._make_mock_session(logits)
+        with patch.object(lang_id_mod, "_load_model", return_value=None):
+            lang_id_mod._session = mock_session
+            lang, conf, raw = identify_language(np.zeros(16000, dtype=np.float32))
+
+        assert lang == "ta"
+        assert conf == pytest.approx(0.808, rel=1e-2)
+
+    def test_identify_language_handles_low_confidence(self):
+        logits = [0.3, 0.25, 0.28, 0.27, 0.26]
+        mock_session = self._make_mock_session(logits)
+        with patch.object(lang_id_mod, "_load_model", return_value=None):
+            lang_id_mod._session = mock_session
+            lang, conf, raw = identify_language(np.zeros(16000, dtype=np.float32))
 
         assert lang == "hi"
-        assert conf == pytest.approx(0.95, rel=1e-5)
+        assert conf == pytest.approx(0.206, rel=1e-1)
 
-    def test_identify_language_handles_code_colon_name_format(self):
-        """SpeechBrain sometimes returns 'bn: Bengali' instead of plain labels."""
-        mock_clf = self._make_mock_classifier("bn: Bengali", 0.88)
-        with patch(
-            "backend.core.language_id._load_classifier",
-            return_value=mock_clf,
-        ):
-            lang, conf = identify_language(np.zeros(16000, dtype=np.float32))
+    def test_identify_language_resamples_audio(self):
+        logits = [0.1, 3.0, 0.2, 0.3, 0.1]
+        mock_session = self._make_mock_session(logits)
+        with patch.object(lang_id_mod, "_load_model", return_value=None):
+            lang_id_mod._session = mock_session
+            audio_8k = np.zeros(8000, dtype=np.float32)
+            lang, conf, raw = identify_language(audio_8k, sr=8000)
 
-        assert lang == "bn"
-        assert conf == pytest.approx(0.88, rel=1e-5)
-
-    def test_identify_language_handles_telugu_name_mapping(self):
-        mock_clf = self._make_mock_classifier("Telugu", 0.91)
-        with patch(
-            "backend.core.language_id._load_classifier",
-            return_value=mock_clf,
-        ):
-            lang, conf = identify_language(np.zeros(16000, dtype=np.float32))
-
-        assert lang == "te"
-        assert conf == pytest.approx(0.91, rel=1e-5)
+        assert lang == "en"
 
 
 class TestUpdateActiveLanguage:
-    def test_update_active_language_switches_on_high_confidence_and_word_count(
-        self,
-    ):
+    def test_update_active_language_switches_on_high_confidence_and_word_count(self):
         result = update_active_language(
             prediction="en",
             confidence=0.85,
@@ -134,7 +119,7 @@ class TestUpdateActiveLanguage:
 
     def test_update_active_language_ignores_switch_on_low_word_count(self):
         result = update_active_language(
-            prediction="te",
+            prediction="ta",
             confidence=0.90,
             word_count=3,
             current_language="hi",

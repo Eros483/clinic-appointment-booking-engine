@@ -2,7 +2,7 @@
 
 **Project type:** Resume / portfolio  
 **Target:** Tier-1 Indian cities (Mumbai, Delhi, Bengaluru, Chennai, Kolkata)  
-**Languages:** Hindi (`hi`), English (`en`), Tamil (`te`), Bengali (`bn`), Marathi (`mr`)
+**Languages:** Hindi (`hi`), English (`en`), Tamil (`ta`), Bengali (`bn`), Marathi (`mr`)
 
 ---
 
@@ -173,7 +173,7 @@ classifier = EncoderClassifier.from_hparams(
 LANG_MAP = {
     "hi": "Hindi",  # VoxLingua107 label
     "en": "English",
-    "te": "Tamil",
+    "ta": "Tamil",
     "bn": "Bengali",
     "mr": "Marathi",
 }
@@ -231,7 +231,7 @@ _classifier = EncoderClassifier.from_hparams(
 )
 
 VOXLINGUA_TO_CODE = {
-    "Hindi": "hi", "English": "en", "Tamil": "te",
+    "Hindi": "hi", "English": "en", "Tamil": "ta",
     "Bengali": "bn", "Marathi": "mr",
 }
 
@@ -278,7 +278,7 @@ def update_active_language(
 STT_MODELS: dict[str, onnxruntime.InferenceSession] = {
     "hi": load_onnx("moonshine-tiny-hi-q8.onnx"),
     "en": load_onnx("moonshine-tiny-en-q8.onnx"),
-    "te": load_onnx("moonshine-tiny-te-q8.onnx"),
+    "ta": load_onnx("moonshine-tiny-ta-q8.onnx"),
     "bn": load_onnx("moonshine-tiny-bn-q8.onnx"),
     "mr": load_onnx("moonshine-tiny-mr-q8.onnx"),
 }
@@ -376,7 +376,7 @@ async def call_groq_with_retry(messages: list, max_retries: int = 2) -> str:
 LANGUAGE_TO_BULBUL = {
     "hi": {"target_language_code": "hi-IN", "speaker": "anand"},
     "en": {"target_language_code": "en-IN", "speaker": "anand"},
-    "te": {"target_language_code": "te-IN", "speaker": "anu"},
+    "ta": {"target_language_code": "ta-IN", "speaker": "anu"},
     "bn": {"target_language_code": "bn-IN", "speaker": "anu"},
     "mr": {"target_language_code": "mr-IN", "speaker": "anu"},
 }
