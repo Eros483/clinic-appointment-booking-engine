@@ -137,7 +137,7 @@ Silero VAD (per frame, 512-sample window)
 
 ### Implementation notes
 
-- Run Silero in ONNX for minimal overhead; fits comfortably in <5ms per frame on a single CPU core.
+- Use the [`silero-vad`](https://pypi.org/project/silero-vad/) PyPI package rather than raw ONNX. It bundles the model, manages the ONNX session, and handles GRU hidden state + context window internally. See `docs/vad-design.md` for details.
 - 700ms end-of-utterance threshold is a starting point. Tune to 500ms if conversation feels sluggish.
 - Keep a **circular pre-roll buffer** of ~300ms so that the first 300ms of speech before the VAD trigger is captured.
 

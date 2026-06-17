@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "updated": "2026-06-17",
   "layers": [
     {
@@ -13,8 +13,22 @@
       "id": "layer-2-vad",
       "title": "Layer 2 — Voice Activity Detection",
       "description": "Silero VAD (ONNX) per-frame, 700ms end-of-utterance, pre-roll buffer",
-      "status": "pending",
-      "priority": "P0"
+      "status": "done",
+      "priority": "P0",
+      "subfeatures": [
+        {
+          "id": "l2-core-processor",
+          "title": "VADProcessor class — per-call Silero VAD with pre-roll buffer and barge-in",
+          "description": "backend/core/vad.py: lazy-loads Silero VAD via silero-vad PyPI package (handles ONNX session, GRU state, context window), per-frame 512-sample processing, circular pre-roll buffer (~300ms / 19 frames), 700ms consecutive silence threshold (~44 frames) for VAD_END, barge-in detection when speech_prob > 0.5 during TTS playback. Events: VAD_START, VAD_END, BARGE_IN.",
+          "status": "done"
+        },
+        {
+          "id": "l2-tests",
+          "title": "VAD tests — mock ONNX session, 12 test cases",
+          "description": "pytest with unittest.mock.patch: VAD_START on speech after silence, VAD_END after silence threshold, BARGE_IN during TTS, pre-roll buffer capture, utterance accumulation, get_utterance_audio, reset clears all state, short burst no early end, full idle→speaking→idle cycle, wrong frame size raises, barge-in flushes previous utterance",
+          "status": "done"
+        }
+      ]
     },
     {
       "id": "layer-3-language-id",

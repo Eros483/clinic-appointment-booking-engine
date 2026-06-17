@@ -66,16 +66,53 @@ Self-contained — local fixtures only, `unittest.mock.patch` for model.
 
 ---
 
+# Layer 2 — Voice Activity Detection — ✅ DONE
+
+## Files created
+
+### ✅ `backend/core/vad.py`
+
+Module-level model loader + per-call `VADProcessor` class.
+
+**`_load_model()`** — lazy-loads Silero VAD model via `silero_vad.load_silero_vad(onnx=True)`. The package manages ONNX session, GRU state, and context window internally. Falls back gracefully if unavailable.
+
+**`VADProcessor`** — per-call state machine:
+- `process(frame: np.ndarray, is_tts_active: bool = False) -> str | None`
+- Events: `VAD_START` (speech just started), `VAD_END` (700ms consecutive silence after speech), `BARGE_IN` (speech during TTS playback)
+- Circular pre-roll buffer of ~300ms (19 frames of 512 samples at 16kHz)
+- `reset()` — clears all state + calls `_model.reset_states()`
+- `get_utterance_audio()` — returns concatenated utterance as float32 array
+
+**Decision logic:**
+- `speech_prob > 0.5` during silence → `VAD_START`, start buffering (prepend pre-roll)
+- `speech_prob > 0.5` during TTS → `BARGE_IN`, flush buffer, start fresh
+- `speech_prob <= 0.5` for ~44 consecutive frames → `VAD_END`
+
+### ✅ `backend/tests/test_vad.py`
+
+`unittest.mock.patch` for ONNX session. 12 test cases:
+
+| # | Test | What it checks |
+|---|---|---|
+| 1 | `test_vad_start_on_speech_after_silence` | Silence → speech → VAD_START |
+| 2 | `test_vad_end_after_silence_threshold` | Speech → 44 silence frames → VAD_END |
+| 3 | `test_barge_in_during_tts` | Speech during TTS → BARGE_IN |
+| 4 | `test_pre_roll_buffer_captured_on_vad_start` | 300ms pre-roll prepended to utterance |
+| 5 | `test_utterance_accumulates_during_speech` | Multiple frames appended correctly |
+| 6 | `test_get_utterance_audio_returns_concatenated` | Concatenated array shape/dtype |
+| 7 | `test_get_utterance_audio_empty_when_no_speech` | Empty before speech starts |
+| 8 | `test_reset_clears_all_state` | State, buffers, hidden state all zeroed |
+| 9 | `test_short_burst_does_not_emit_early_end` | Single silence frame no premature end |
+| 10 | `test_full_idle_speaking_idle_cycle` | Complete cycle: idle → speaking → idle |
+| 11 | `test_raises_on_wrong_frame_size` | ValueError on non-512-sample frame |
+| 12 | `test_barge_in_flushes_previous_utterance` | Pre-roll preserved on barge-in |
+
 ## Verification commands
 
 ```bash
-# Unit tests (9/9 passing)
-uv run pytest backend/tests/test_language_id.py -v
+# All 29 tests pass (12 VAD + 17 existing)
+uv run pytest backend/tests/ -v
 
-# Formatting check (all 3 files clean)
-uv run black --check backend/core/language_id.py backend/tests/test_language_id.py backend/scripts/eval_lang_id.py
-
-# Pre-deployment validation on real model (requires ~2GB download + ~5min runtime)
-# Downloads VoxLingua107 + IndicVoices dataset on first run
-uv run python -m backend.scripts.eval_lang_id
+# Formatting check
+uv run black --check backend/core/vad.py backend/tests/test_vad.py
 ```
