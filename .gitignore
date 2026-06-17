@@ -14,8 +14,6 @@ build/
 *.egg
 tmp/
 backend/.cache/
-backend/artifacts/
-
 # Logs
 logs/
 *.log

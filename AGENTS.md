@@ -1,16 +1,16 @@
 # AGENT.md
 
 ## Project Overview
-Real-time multilingual voice agent that answers a clinic phone line via Twilio, identifies the caller's language (hi/en/te/bn/mr), conducts natural conversation to collect appointment details, validates slot availability in Postgres, and schedules the event on Google Calendar — all without human intervention. Resume/portfolio project targeting Tier-1 Indian cities.
+Real-time multilingual voice agent that answers a clinic phone line via Twilio, identifies the caller's language (hi/en/ta/bn/mr), conducts natural conversation to collect appointment details, validates slot availability in Postgres, and schedules the event on Google Calendar — all without human intervention. Resume/portfolio project targeting Tier-1 Indian cities.
 
-**Status:** Backend scaffolding done — full directory tree, `utils/config.py` (Pydantic BaseSettings), `utils/logger.py`, `backend/main.py` (FastAPI + /health), `requirements.txt`, `docs/features.json`. All 33 backend files created as stubs ready for implementation. Frontend directory created but empty.
+**Status:** Layer 3 (Language ID) complete — custom ECAPA-TDNN trained on 2000 samples/lang (IndicVoices + Svarah), 86.8% test accuracy, p95 6ms latency, exported to ONNX in `backend/artifacts/`. Kaggle notebook at `backend/training/train_lang_id.ipynb`. Layers 1-2 (Telephony, VAD) and 4-6+ pending.
 
 ## Tech Stack (per design doc)
 - **Server:** Python 3.13, asyncio / FastAPI, Docker → Render (free tier)
 - **Telephony:** Twilio Media Streams (8kHz μ-law G.711)
 - **VAD:** Silero VAD (ONNX)
-- **Language ID:** SpeechBrain VoxLingua107 ECAPA-TDNN
-- **STT:** Moonshine Tiny ONNX Q8 ×5 (hi/en/te/bn/mr)
+- **Language ID:** Custom ECAPA-TDNN (C=512) trained on IndicVoices + Svarah, ONNX inference, 5 languages (hi/en/ta/bn/mr)
+- **STT:** Moonshine Tiny ONNX Q8 ×5 (hi/en/ta/bn/mr)
 - **LLM:** Groq API (Llama 3.1 8B)
 - **TTS:** Sarvam Bulbul v3
 - **Session:** Redis (Render free tier)
@@ -137,7 +137,7 @@ clinic-appointment-booking-engine/
 ## Requirements from design.md
 
 ### Mandatory pre-deployment steps
-- Validate SpeechBrain language classifier on IndicVoices (clean + telephony-degraded)
+- Validate custom ECAPA-TDNN language classifier on IndicVoices (clean + telephony-degraded)
 - Target metrics: TTFT <400ms, turn latency <800ms, lang accuracy ≥85%
 - Must implement: barge-in on VAD, Groq rate-limit retry with "one moment please" TTS, Redis session TTL 3600s, optimistic slot locking (`WHERE status = 'available'`)
 

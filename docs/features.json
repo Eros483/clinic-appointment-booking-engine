@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0",
-  "updated": "2026-06-14",
+  "version": "0.2.0",
+  "updated": "2026-06-17",
   "layers": [
     {
       "id": "layer-1-telephony",
@@ -38,7 +38,7 @@
         {
           "id": "l3-training-pipeline",
           "title": "training/ — build_dataset, augment, train_ecapa, export_onnx, eval_lang_id",
-          "description": "backend/training/: streaming dataset builder from IndicVoices (hi/ta/bn/mr) + Svarah (en), telephony augmentation, PyTorch ECAPA-TDNN training loop, ONNX export with numerical validation, eval script for clean+degraded accuracy and latency p50/p95",
+          "description": "backend/training/: streaming dataset builder from IndicVoices (hi/ta/bn/mr) + Svarah (en), telephony augmentation, PyTorch ECAPA-TDNN training loop, ONNX export with numerical validation, eval script for clean+degraded accuracy and latency p50/p95. Kaggle notebook (train_lang_id.ipynb) for cloud GPU (T4). Final: 87.1% val, 86.8% test, p95 6ms latency, ONNX max diff 4.77e-07, 0/1000 disagreements.",
           "status": "done"
         },
         {

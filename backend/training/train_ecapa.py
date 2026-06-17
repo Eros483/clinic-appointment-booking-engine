@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchaudio
 from torch.utils.data import Dataset, DataLoader
 
 from backend.training.build_dataset import TARGET_LANGS, TARGET_SR, build_dataset
@@ -22,70 +23,27 @@ C = 512
 NUM_CLASSES = len(TARGET_LANGS)
 CHECKPOINT_DIR = Path(__file__).resolve().parent / "checkpoints"
 
-
-# ---------------------------------------------------------------------------
-# Mel-spectrogram extraction (pure numpy, used in data loading)
-# ---------------------------------------------------------------------------
+_device: torch.device | None = None
+_mel_transform: torchaudio.transforms.MelSpectrogram | None = None
 
 
-def _mel_filterbank(sr: int, n_mels: int, n_fft: int) -> np.ndarray:
-    low = 0.0
-    high = sr / 2
-    mel_low = 2595.0 * math.log10(1.0 + low / 700.0)
-    mel_high = 2595.0 * math.log10(1.0 + high / 700.0)
-    mel_points = np.linspace(mel_low, mel_high, n_mels + 2)
-    hz_points = 700.0 * (10.0 ** (mel_points / 2595.0) - 1.0)
-    bins = np.floor((n_fft + 1) * hz_points / sr).astype(int)
-    bins = np.clip(bins, 0, n_fft // 2)
-
-    fb = np.zeros((n_mels, n_fft // 2 + 1), dtype=np.float32)
-    for m in range(1, n_mels + 1):
-        left = bins[m - 1]
-        center = bins[m]
-        right = bins[m + 1]
-        for k in range(left, center):
-            fb[m - 1, k] = (k - left) / (center - left)
-        for k in range(center, right):
-            fb[m - 1, k] = (right - k) / (right - center)
-    return fb
+def _ensure_mel_transform(device: torch.device) -> torchaudio.transforms.MelSpectrogram:
+    global _mel_transform
+    if _mel_transform is None:
+        _mel_transform = torchaudio.transforms.MelSpectrogram(
+            sample_rate=TARGET_SR,
+            n_fft=N_FFT,
+            win_length=WIN_LENGTH,
+            hop_length=HOP_LENGTH,
+            n_mels=N_MELS,
+            f_min=0.0,
+        ).to(device)
+    return _mel_transform
 
 
-class LogMelExtractor:
-    _fb: np.ndarray | None = None
-
-    @classmethod
-    def _ensure_fb(cls, sr: int = TARGET_SR) -> np.ndarray:
-        if cls._fb is None:
-            cls._fb = _mel_filterbank(sr, N_MELS, N_FFT)
-        return cls._fb
-
-    @classmethod
-    def compute(cls, audio: np.ndarray, sr: int = TARGET_SR) -> np.ndarray:
-        fb = cls._ensure_fb(sr)
-        if audio.ndim == 1:
-            audio = audio[np.newaxis, :]
-        if sr != TARGET_SR:
-            import scipy.signal
-
-            audio = scipy.signal.resample_poly(audio, TARGET_SR, sr)
-
-        n_fft = N_FFT
-        hop = HOP_LENGTH
-        win = WIN_LENGTH
-        window = np.hanning(win).astype(np.float32)
-
-        n_frames = 1 + (audio.shape[-1] - win) // hop
-        stft = np.zeros((audio.shape[0], n_fft // 2 + 1, n_frames), dtype=np.complex64)
-        for i in range(n_frames):
-            start = i * hop
-            segment = audio[:, start : start + win] * window[np.newaxis, :]
-            spec = np.fft.rfft(segment, n=n_fft)
-            stft[:, :, i] = spec
-
-        power = np.abs(stft) ** 2
-        mel = fb @ power
-        log_mel = np.log(np.clip(mel, 1e-10, None))
-        return log_mel.astype(np.float32)
+def compute_log_mel(audio: torch.Tensor, device: torch.device) -> torch.Tensor:
+    mel = _ensure_mel_transform(device)(audio)
+    return torch.log(torch.clamp(mel, min=1e-10))
 
 
 # ---------------------------------------------------------------------------
@@ -94,9 +52,15 @@ class LogMelExtractor:
 
 
 class LangIdDataset(Dataset):
-    def __init__(self, samples: dict[str, list[np.ndarray]], augment: bool = True):
+    def __init__(
+        self,
+        samples: dict[str, list[np.ndarray]],
+        augment: bool = True,
+        device: torch.device = torch.device("cpu"),
+    ):
         self.items: list[tuple[np.ndarray, int]] = []
         self.augment = augment
+        self.device = device
         for lang_code, audios in samples.items():
             label_idx = TARGET_LANGS.index(lang_code)
             for audio in audios:
@@ -109,10 +73,10 @@ class LangIdDataset(Dataset):
         audio, label = self.items[idx]
         if self.augment:
             audio = random_augment(audio, TARGET_SR, prob=0.6)
-        mel = LogMelExtractor.compute(audio, TARGET_SR)
-        mel_t = torch.from_numpy(mel[0])
-        label_t = torch.tensor(label, dtype=torch.long)
-        return mel_t, label_t
+        audio_t = torch.from_numpy(audio).float().to(self.device)
+        mel = compute_log_mel(audio_t, self.device)
+        label_t = torch.tensor(label, dtype=torch.long, device=self.device)
+        return mel, label_t
 
 
 # ---------------------------------------------------------------------------
@@ -331,9 +295,9 @@ def main():
         force_rebuild=args.force_rebuild,
     )
 
-    train_dataset = LangIdDataset(splits["train"], augment=True)
-    val_dataset = LangIdDataset(splits["val"], augment=False)
-    test_dataset = LangIdDataset(splits["test"], augment=False)
+    train_dataset = LangIdDataset(splits["train"], augment=True, device=device)
+    val_dataset = LangIdDataset(splits["val"], augment=False, device=device)
+    test_dataset = LangIdDataset(splits["test"], augment=False, device=device)
 
     train_loader = DataLoader(
         train_dataset,

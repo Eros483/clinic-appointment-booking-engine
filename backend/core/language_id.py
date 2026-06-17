@@ -18,6 +18,7 @@ WIN_LENGTH = 400
 TARGET_SR = 16000
 
 _session = None
+_mel_transform = None
 
 
 def _load_model() -> None:
@@ -39,6 +40,60 @@ def _load_model() -> None:
     _session.run(None, {"mel": dummy})
 
 
+def _ensure_mel_transform():
+    global _mel_transform
+    if _mel_transform is None:
+        try:
+            import torch
+            import torchaudio
+
+            _mel_transform = torchaudio.transforms.MelSpectrogram(
+                sample_rate=TARGET_SR,
+                n_fft=N_FFT,
+                win_length=WIN_LENGTH,
+                hop_length=HOP_LENGTH,
+                n_mels=N_MELS,
+            )
+        except ImportError:
+            logger.warning("torchaudio not available — using numpy mel fallback")
+            _mel_transform = False
+    return _mel_transform
+
+
+def _log_mel(audio: np.ndarray, sr: int = TARGET_SR) -> np.ndarray:
+    import torch
+
+    mel_tfm = _ensure_mel_transform()
+    if sr != TARGET_SR:
+        import scipy.signal
+
+        audio = scipy.signal.resample_poly(audio, TARGET_SR, sr)
+
+    audio_t = torch.from_numpy(audio).float()
+    if mel_tfm is False:
+        fb = _mel_filterbank(sr)
+        n_fft = N_FFT
+        hop = HOP_LENGTH
+        win = WIN_LENGTH
+        window = np.hanning(win).astype(np.float32)
+        n_frames = 1 + (len(audio) - win) // hop
+        if n_frames < 1:
+            return np.zeros((1, N_MELS, 1), dtype=np.float32)
+        stft = np.zeros((n_fft // 2 + 1, n_frames), dtype=np.complex64)
+        for i in range(n_frames):
+            start = i * hop
+            segment = audio[start : start + win] * window
+            stft[:, i] = np.fft.rfft(segment, n=n_fft)
+        power = np.abs(stft) ** 2
+        mel = fb @ power
+        log_mel = np.log(np.clip(mel, 1e-10, None))
+        return log_mel[np.newaxis, :, :].astype(np.float32)
+
+    mel = mel_tfm(audio_t)
+    log_mel = torch.log(torch.clamp(mel, min=1e-10))
+    return log_mel.unsqueeze(0).numpy().astype(np.float32)
+
+
 def _mel_filterbank(sr: int) -> np.ndarray:
     import math
 
@@ -50,7 +105,6 @@ def _mel_filterbank(sr: int) -> np.ndarray:
     hz_points = 700.0 * (10.0 ** (mel_points / 2595.0) - 1.0)
     bins = np.floor((N_FFT + 1) * hz_points / sr).astype(int)
     bins = np.clip(bins, 0, N_FFT // 2)
-
     fb = np.zeros((N_MELS, N_FFT // 2 + 1), dtype=np.float32)
     for m in range(1, N_MELS + 1):
         left = int(bins[m - 1])
@@ -61,39 +115,6 @@ def _mel_filterbank(sr: int) -> np.ndarray:
         for k in range(center, right):
             fb[m - 1, k] = (right - k) / max(right - center, 1)
     return fb
-
-
-_fb_cache: np.ndarray | None = None
-
-
-def _ensure_fb(sr: int = TARGET_SR) -> np.ndarray:
-    global _fb_cache
-    if _fb_cache is None:
-        _fb_cache = _mel_filterbank(sr)
-    return _fb_cache
-
-
-def _log_mel(audio: np.ndarray, sr: int = TARGET_SR) -> np.ndarray:
-    fb = _ensure_fb(sr)
-    n_fft = N_FFT
-    hop = HOP_LENGTH
-    win = WIN_LENGTH
-    window = np.hanning(win).astype(np.float32)
-
-    n_frames = 1 + (len(audio) - win) // hop
-    if n_frames < 1:
-        return np.zeros((1, N_MELS, 1), dtype=np.float32)
-
-    stft = np.zeros((n_fft // 2 + 1, n_frames), dtype=np.complex64)
-    for i in range(n_frames):
-        start = i * hop
-        segment = audio[start : start + win] * window
-        stft[:, i] = np.fft.rfft(segment, n=n_fft)
-
-    power = np.abs(stft) ** 2
-    mel = fb @ power
-    log_mel = np.log(np.clip(mel, 1e-10, None))
-    return log_mel[np.newaxis, :, :].astype(np.float32)
 
 
 def identify_language(audio: np.ndarray, sr: int = 16000) -> tuple[str, float, str]:
